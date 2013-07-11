@@ -19,6 +19,7 @@ import datetime
 import socket
 import time
 import hashlib
+import os
 
 from cStringIO import StringIO
 
@@ -28,6 +29,8 @@ from mapproxy.cache.base import (
     tile_buffer, CacheBackendError,)
 from mapproxy.source import SourceError
 from mapproxy.srs import SRS
+from mapproxy.util import timestamp_from_isodate
+from mapproxy.config import abspath
 
 try:
     import requests
@@ -51,7 +54,7 @@ class UnexpectedResponse(CacheBackendError):
 class CouchDBCache(TileCacheBase, FileBasedLocking):
     def __init__(self, url, db_name, lock_dir,
         file_ext, tile_grid, md_template=None,
-        tile_id_template=None):
+        tile_id_template=None, max_age=None):
 
         if requests is None:
             raise ImportError("CouchDB backend requires 'requests' package.")
@@ -65,6 +68,8 @@ class CouchDBCache(TileCacheBase, FileBasedLocking):
         self.file_ext = file_ext
         self.tile_grid = tile_grid
         self.md_template = md_template
+        self.max_age = max_age
+        self._expire_timestamp = None
         self.couch_url = '%s/%s' % (url.rstrip('/'), db_name.lower())
         self.req_session = requests.Session()
         self.req_session.timeout = 5
@@ -118,6 +123,70 @@ class CouchDBCache(TileCacheBase, FileBasedLocking):
             return False
         raise SourceError('%r: %r' % (resp.status_code, resp.content))
 
+        # if tile.coord is None:
+        #     return True
+        # if tile.source is None:
+        #     return False
+        # try:
+        #     if tile.timestamp is None:
+        #         url = self.document_url(tile.coord)
+        #         self.init_db()
+        #         resp = self.req_session.get(url)
+        #         if resp.status_code == 200:
+        #             doc = json.loads(resp.content)
+        #             tile.timestamp = doc.get(self.md_template.timestamp_key)
+            
+        #     max_mtime = self.expire_timestamp(tile)
+        #     if max_mtime is not None:
+        #         stale = max_mtime < time.time()
+        #         if stale:
+        #             return False
+        #     return True
+        # except (requests.exceptions.RequestException, socket.error), ex:
+        #     # is_cached should not fail (would abort seeding for example),
+        #     # so we catch these errors here and just return False
+        #     log.warn('error while requesting %s: %s', url, ex)
+        #     return False
+        # if resp.status_code == 404:
+        #     return False
+        # raise SourceError('%r: %r' % (resp.status_code, resp.content))
+
+    # def expire_timestamp(self, tile=None):
+    #     """
+    #     Return the timestamp until which a tile should be accepted as up-to-date,
+    #     or ``None`` if the tiles should not expire.
+
+    #     :note: Returns _expire_timestamp by default.
+    #     """
+        
+    #     """
+    #     If we have got a max_age variable from the YAML, work out the timestamp that this tile should expire
+    #     """
+    #     if self._max_age is not None and tile is not None:
+    #         if 'time' in self._max_age:
+    #             try:
+    #                 return timestamp_from_isodate(self._max_age['time'])
+    #             except:
+    #                 log.error("Could not parse time '%s'. should be ISO time string" % (self._max_age["time"]))
+            
+    #         """ Was mtime passed with a path to the source file? Grab the modified date to see if we need to update the tile """
+    #         if 'mtime' in self._max_age:
+    #             datasource = abspath(self._max_age['mtime'])
+    #             try:
+    #                 source_modified_time = os.path.getmtime(datasource)
+    #                 if tile.timestamp < source_modified_time:
+    #                     return source_modified_time
+    #                 else:
+    #                     return time.time() + 86400  # Return a date in the future so the tile is accepted as up-to-date
+    #             except OSError, ex:
+    #                 log.error("Can't parse last modified time from file '%s'." % datasource)
+    #                 return 0 # Force refresh
+    #         deltas = {}
+    #         for delta_type in ('weeks', 'days', 'hours', 'minutes'):
+    #             deltas[delta_type] = self._max_age.get(delta_type, 0)
+    #         return tile.timestamp + datetime.timedelta(**deltas).total_seconds()
+    
+    #     return self._expire_timestamp
 
     def _tile_doc(self, tile):
         tile_id = self.document_url(tile.coord, relative=True)

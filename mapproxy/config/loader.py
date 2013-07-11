@@ -982,10 +982,11 @@ class CacheConfiguration(ConfigurationBase):
 
         md_template = CouchDBMDTemplate(self.conf['cache'].get('tile_metadata', {}))
         tile_id = self.conf['cache'].get('tile_id')
+        max_age = self.conf.get('max_age')
 
         return CouchDBCache(url=url, db_name=db_name,
             lock_dir=self.lock_dir(), file_ext=file_ext, tile_grid=grid_conf.tile_grid(),
-            md_template=md_template, tile_id_template=tile_id)
+            md_template=md_template, tile_id_template=tile_id, max_age=max_age)
 
     def _tile_cache(self, grid_conf, file_ext):
         if self.conf.get('disable_storage', False):
@@ -1131,6 +1132,7 @@ class CacheConfiguration(ConfigurationBase):
             tile_filter = self._tile_filter()
             image_opts = compatible_image_options(source_image_opts, base_opts=base_image_opts)
             cache = self._tile_cache(grid_conf, image_opts.format.ext)
+            max_age = self.conf.get('max_age')
             identifier = self.conf['name'] + '_' + tile_grid.name
 
             tile_creator_class = None
@@ -1161,7 +1163,8 @@ class CacheConfiguration(ConfigurationBase):
                               minimize_meta_requests=minimize_meta_requests,
                               concurrent_tile_creators=concurrent_tile_creators,
                               pre_store_filter=tile_filter,
-                              tile_creator_class=tile_creator_class)
+                              tile_creator_class=tile_creator_class,
+                              max_age=max_age)
             extent = merge_layer_extents(sources)
             if extent.is_default:
                 extent = map_extent_from_grid(tile_grid)
