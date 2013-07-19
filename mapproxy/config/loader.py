@@ -994,7 +994,6 @@ class CacheConfiguration(ConfigurationBase):
 
         grid_conf.tile_grid() #create to resolve `base` in grid_conf.conf
         cache_type = self.conf.get('cache', {}).get('type', 'file')
-        cache_expire = self.conf.get('cache', {}).get('max_age')
         return getattr(self, '_%s_cache' % cache_type)(grid_conf, file_ext)
 
     def _tile_filter(self):
@@ -1155,7 +1154,7 @@ class CacheConfiguration(ConfigurationBase):
                 locker = TileLocker(lock_dir, lock_timeout, identifier + '_renderd')
                 tile_creator_class = partial(RenderdTileCreator, renderd_address,
                     priority=priority, tile_locker=locker)
-            refresh_before = self.conf.get('max_age') or None   
+            refresh_before = self.conf.get('refresh_before')
             mgr = TileManager(tile_grid, cache, sources, image_opts.format.ext,
                               image_opts=image_opts, identifier=identifier,
                               request_format=request_format_ext,

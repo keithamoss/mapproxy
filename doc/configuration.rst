@@ -436,6 +436,31 @@ even if the there are matching tiles in the cache. See :ref:`seed_only <wms_seed
 
 .. note:: Be careful when using a cache with disabled storage in tile services when the cache uses WMS sources with metatiling.
 
+``refresh_before``
+~~~~~~~~~~~~~~~~~~
+
+Regenerate tiles that are older than the given date. The date can either be absolute or relative.
+
+MapProxy can also use the last modification time of a file. This can be useful to make sure a dynamic layer is producing up to date tiles (feed the source files path here, and when the source is modified, it will regenerate the tiles).
+File paths should be relative to the proxy configuration or absolute.
+
+Examples::
+
+  # absolute as ISO time
+  refresh_before:
+    time: 2010-10-21T12:35:00
+
+  # relative from the creation date of each tile
+  refresh_before:
+    weeks: 1
+    days: 7
+    hours: 4
+    minutes: 15
+
+  # modification time of a given file (eg. the source file
+  refresh_before:
+    mtime: path/to/file
+
 ``cache_dir``
 """""""""""""
 
