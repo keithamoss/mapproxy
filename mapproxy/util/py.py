@@ -18,6 +18,7 @@ Python related helper functions.
 """
 from __future__ import with_statement
 from functools import wraps
+import time
 
 def reraise_exception(new_exc, exc_info):
     """
@@ -61,6 +62,22 @@ def memoize(func):
         if args not in cache:
             cache[args] = func(self, *args)
         return cache[args]
+    return wrapper
+
+def cache_file_modified(func):
+    @wraps(func)
+    def wrapper(self, *args):
+        if not hasattr(self, '__source_modified'):
+            self.__source_modified = {}
+        cache = self.__source_modified
+        if args not in cache:
+            cache[args] = {}
+            cache[args]['cached'] = func(self, *args)
+            cache[args]['timestamp'] = time.time()
+        elif time.time() > cache[args]['timestamp'] + 60: #expires after a minute
+            cache[args]['cached'] = func(self, *args)
+            cache[args]['timestamp'] = time.time()
+        return cache[args]['cached']
     return wrapper
 
 def replace_instancemethod(old_method, new_method):

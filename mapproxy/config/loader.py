@@ -994,6 +994,7 @@ class CacheConfiguration(ConfigurationBase):
 
         grid_conf.tile_grid() #create to resolve `base` in grid_conf.conf
         cache_type = self.conf.get('cache', {}).get('type', 'file')
+        cache_expire = self.conf.get('cache', {}).get('max_age')
         return getattr(self, '_%s_cache' % cache_type)(grid_conf, file_ext)
 
     def _tile_filter(self):
@@ -1154,6 +1155,7 @@ class CacheConfiguration(ConfigurationBase):
                 locker = TileLocker(lock_dir, lock_timeout, identifier + '_renderd')
                 tile_creator_class = partial(RenderdTileCreator, renderd_address,
                     priority=priority, tile_locker=locker)
+            refresh_before = self.conf.get('max_age') or None   
             mgr = TileManager(tile_grid, cache, sources, image_opts.format.ext,
                               image_opts=image_opts, identifier=identifier,
                               request_format=request_format_ext,
@@ -1161,7 +1163,8 @@ class CacheConfiguration(ConfigurationBase):
                               minimize_meta_requests=minimize_meta_requests,
                               concurrent_tile_creators=concurrent_tile_creators,
                               pre_store_filter=tile_filter,
-                              tile_creator_class=tile_creator_class)
+                              tile_creator_class=tile_creator_class,
+                              refresh_before=refresh_before)
             extent = merge_layer_extents(sources)
             if extent.is_default:
                 extent = map_extent_from_grid(tile_grid)

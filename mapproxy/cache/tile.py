@@ -44,6 +44,11 @@ from mapproxy.image.merge import merge_images
 from mapproxy.image.tile import TileSplitter
 from mapproxy.layer import MapQuery, BlankImage
 from mapproxy.util import async
+from mapproxy.util.times import timestamp_from_isodate, timestamp_before
+from mapproxy.util.py import cache_file_modified
+import os
+import time
+import datetime
 
 class TileManager(object):
     """
@@ -57,7 +62,7 @@ class TileManager(object):
     """
     def __init__(self, grid, cache, sources, format, image_opts=None, request_format=None,
         meta_buffer=None, meta_size=None, minimize_meta_requests=False, identifier=None,
-        pre_store_filter=None, concurrent_tile_creators=1, tile_creator_class=None):
+        pre_store_filter=None, concurrent_tile_creators=1, tile_creator_class=None, refresh_before=None):
         self.grid = grid
         self.cache = cache
         self.identifier = identifier
@@ -72,6 +77,7 @@ class TileManager(object):
         self.pre_store_filter = pre_store_filter or []
         self.concurrent_tile_creators = concurrent_tile_creators
         self.tile_creator_class = tile_creator_class or TileCreator
+        self.refresh_before = refresh_before
 
         if meta_buffer or (meta_size and not meta_size == [1, 1]):
             if all(source.supports_meta_tiles for source in sources):
@@ -142,7 +148,9 @@ class TileManager(object):
         if self.meta_grid:
             tile = Tile(self.meta_grid.main_tile(tile.coord))
         return self.cache.lock(tile)
-
+    @cache_file_modified
+    def file_modified(self,path):
+        return os.path.getmtime(path)
     def is_cached(self, tile, dimensions=None):
         """
         Return True if the tile is cached.
@@ -151,15 +159,19 @@ class TileManager(object):
             tile = Tile(tile)
         if tile.coord is None:
             return True
-        cached = self.cache.is_cached(tile)
-        max_mtime = self.expire_timestamp(tile)
-        if cached and max_mtime is not None:
+        cached = self.cache.is_cached(tile) #tile exists
+        if cached:
             self.cache.load_tile_metadata(tile)
-            stale = tile.timestamp < max_mtime
-            if stale:
-                cached = False
+            if 'mtime' in self.refresh_before and self.refresh_before['mtime'] is not None:
+                modified = self.file_modified(self.refresh_before['mtime'])
+                if tile.timestamp < modified:
+                    cached = False
+            expire_timestamp = self.expire_timestamp(tile)
+            if expire_timestamp is not None:
+                stale = expire_timestamp < time.time()
+                if stale:
+                    cached = False
         return cached
-
     def is_stale(self, tile, dimensions=None):
         """
         Return True if tile exists _and_ is expired.
@@ -181,6 +193,24 @@ class TileManager(object):
 
         :note: Returns _expire_timestamp by default.
         """
+        if 'time' in self.refresh_before: # Absolute time has been passed to refresh before
+            try:
+                return timestamp_from_isodate(self.refresh_before['time'])
+            except ValueError:
+                raise SeedConfigurationError("can't parse time '%s'. should be ISO time string" % (conf["time"], ))
+        elif any(time in self.refresh_before for time in [ 'weeks', 'days', 'hours', 'minutes' ] ): # Relative time has been passed
+            self.cache.load_tile_metadata(tile) # we need the tile timestamp
+            refresh_before = tile.timestamp
+            # Add the relative time to the tile creation date
+            if 'weeks' in self.refresh_before:
+                refresh_before += int(self.refresh_before['weeks']) * 60 * 60 * 24 * 7
+            if 'days' in self.refresh_before:
+                refresh_before += int(self.refresh_before['days']) * 60 * 60 * 24
+            if 'hours' in self.refresh_before:
+                refresh_before += int(self.refresh_before['hours']) * 60 * 60
+            if 'minutes' in self.refresh_before:
+                refresh_before += int(self.refresh_before['minutes']) * 60
+            return refresh_before        
         return self._expire_timestamp
 
     def apply_tile_filter(self, tile):
