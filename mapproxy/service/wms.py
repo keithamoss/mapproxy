@@ -125,7 +125,8 @@ class WMSServer(Server):
             map_request.http.environ, (query.srs.srs_code, query.bbox))
 
         resp = Response(result.as_buffer(img_opts), content_type=img_opts.format.mime_type)
-
+        if max_age in render_layers[0].image_opts:
+            self.max_tile_age = render_layers[0].image_opts.max_age
         if query.tiled_only and isinstance(result.cacheable, CacheInfo):
             cache_info = result.cacheable
             resp.cache_headers(cache_info.timestamp, etag_data=(cache_info.timestamp, cache_info.size),
@@ -134,7 +135,7 @@ class WMSServer(Server):
         elif not result.cacheable:
             resp.cache_headers(no_cache=True)
         else:
-            resp.cache_headers(max_age=render_layers[0].image_opts.max_age or self.max_tile_age or 60)
+            resp.cache_headers(max_age=self.max_tile_age or 60)
         return resp
 
     def capabilities(self, map_request):
