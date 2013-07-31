@@ -71,9 +71,7 @@ def cache_file_modified(func):
             self.__source_modified = {}
         cache = self.__source_modified
         if args not in cache:
-            cache[args] = {}
-            cache[args]['cached'] = func(self, *args)
-            cache[args]['timestamp'] = time.time()
+            cache[args] = {'cached': func(self, *args), 'timestamp': time.time()}
         elif time.time() > cache[args]['timestamp'] + 60: #expires after a minute
             cache[args]['cached'] = func(self, *args)
             cache[args]['timestamp'] = time.time()
