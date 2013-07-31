@@ -250,6 +250,7 @@ mapproxy_yaml_spec = {
             'disable_storage': bool(),
             'format': str(),
             'image': image_opts,
+            'max_age': int(),
             'refresh_before': {
                 'seconds': number(),
                 'minutes': number(),
