@@ -436,6 +436,12 @@ even if the there are matching tiles in the cache. See :ref:`seed_only <wms_seed
 
 .. note:: Be careful when using a cache with disabled storage in tile services when the cache uses WMS sources with metatiling.
 
+``max_age``
+~~~~~~~~~~~~~~~~~~
+
+Set the max-age cache header value (in seconds) sent to the users for each tile in this layer. A compatible useragent should cache the tile for this number of seconds before re-requesting from mapproxy. If no value is set, the max_age header will default to the ``globals.tile.expires_hours`` value.
+
+
 ``cache_dir``
 """""""""""""
 

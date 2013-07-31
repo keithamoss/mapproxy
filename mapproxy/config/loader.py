@@ -1177,6 +1177,7 @@ class CacheConfiguration(ConfigurationBase):
         from mapproxy.layer import CacheMapLayer, SRSConditional, ResolutionConditional
 
         image_opts = self.image_opts()
+        image_opts.max_age = self.conf.get('max_age')
         max_tile_limit = self.context.globals.get_value('max_tile_limit', self.conf,
             global_key='cache.max_tile_limit')
         caches = []
