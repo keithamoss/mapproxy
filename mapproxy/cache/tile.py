@@ -45,7 +45,7 @@ from mapproxy.image.tile import TileSplitter
 from mapproxy.layer import MapQuery, BlankImage
 from mapproxy.util import async
 from mapproxy.util.times import timestamp_from_isodate, timestamp_before
-from mapproxy.util.py import memoize,cache_file_modified
+from mapproxy.util.py import cache_file_modified
 import os, time, datetime, logging
 log = logging.getLogger(__name__)
 
@@ -190,7 +190,6 @@ class TileManager(object):
                 return True
             return False
         return False
-    @memoize
     def expire_timestamp(self, tile=None):
         """
         Return the timestamp until which a tile should be accepted as up-to-date,
